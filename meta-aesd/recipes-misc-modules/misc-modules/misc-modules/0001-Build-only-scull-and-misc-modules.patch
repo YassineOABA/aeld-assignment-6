@@ -1,0 +1,23 @@
+From b177eb9d2b2bc1a07d253c5a892d60e31a65eb06 Mon Sep 17 00:00:00 2001
+From: Yassine Ouled Ahmed <yassineouledahmed@gmail.com>
+Date: Fri, 27 Nov 2026 23:14:44 +0100
+Subject: [PATCH] Build only scull and misc-modules
+Upstream-Status: Inappropriate [assignment/layer specific build customization]
+---
+ Makefile | 5 +----
+ 1 file changed, 1 insertion(+), 4 deletions(-)
+
+diff --git a/Makefile b/Makefile
+index 7b08c49..c4f2e2e 100644
+--- a/Makefile
++++ b/Makefile
+@@ -1,8 +1,5 @@
+ 
+-SUBDIRS =  misc-progs misc-modules \
+-           skull scull scullc scullp lddbus sculld scullv shortprint simple tty \
+-	   pci usb\
+-	   sbull snull short
++SUBDIRS =  misc-modules scull
+ 
+ all: subdirs
+ 

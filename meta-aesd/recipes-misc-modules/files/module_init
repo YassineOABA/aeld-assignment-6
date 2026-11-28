@@ -1,0 +1,82 @@
+#!/bin/sh
+
+MODDIR="/lib/modules/$(uname -r)"
+DEFAULT_MODE="664"
+
+resolve_group() {
+    if grep -q '^staff:' /etc/group 2>/dev/null; then
+        echo "staff"
+    elif grep -q '^wheel:' /etc/group 2>/dev/null; then
+        echo "wheel"
+    else
+        echo "0"
+    fi
+}
+
+load_one_module() {
+    mod="$1"
+    dev="$1"
+    shift
+    group="$(resolve_group)"
+
+    if grep -q "^${mod} " /proc/modules 2>/dev/null; then
+        echo "Module $mod is already loaded"
+        return 0
+    fi
+
+    echo "Loading module $mod..."
+    if ! modprobe "$mod" "$@" 2>/dev/null; then
+        ko_path="$(find "$MODDIR" -name "${mod}.ko" -print -quit 2>/dev/null)"
+        if [ -z "$ko_path" ]; then
+            echo "Error: could not find ${mod}.ko under $MODDIR"
+            return 1
+        fi
+        insmod "$ko_path" "$@" || return 1
+    fi
+
+    major=$(awk "\$2==\"$dev\" {print \$1}" /proc/devices)
+    if [ -n "$major" ]; then
+        rm -f "/dev/${dev}"
+        mknod "/dev/${dev}" c "$major" 0
+        chgrp "$group" "/dev/${dev}"
+        chmod "$DEFAULT_MODE" "/dev/${dev}"
+        echo "Created /dev/${dev} (major $major, mode $DEFAULT_MODE)"
+    else
+        echo "No major number in /proc/devices for $dev (skipping /dev/${dev} node)"
+    fi
+}
+
+unload_one_module() {
+    mod="$1"
+    dev="$1"
+
+    if grep -q "^${mod} " /proc/modules 2>/dev/null; then
+        echo "Unloading module $mod..."
+        rmmod "$mod" || return 1
+    fi
+
+    rm -f "/dev/${dev}"
+}
+
+case "$1" in
+    start)
+        for m in faulty hello; do
+            load_one_module "$m" || exit 1
+        done
+        ;;
+    stop)
+        for m in faulty hello; do
+            unload_one_module "$m" || exit 1
+        done
+        ;;
+    restart)
+        "$0" stop
+        "$0" start
+        ;;
+    *)
+        echo "Usage: $0 {start|stop|restart}"
+        exit 1
+        ;;
+esac
+
+exit 0
